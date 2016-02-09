@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <title>GOOGLE MAPS API</title>
+    <style>
+      html, body, #map-canvas {
+        height: 100%;
+        margin: 0px;
+        padding: 0px
+      }
+      #panel {
+        position: absolute;
+        top: 5px;
+        left: 50%;
+        margin-left: -180px;
+        z-index: 5;
+        background-color: #fff;
+        padding: 5px;
+        border: 1px solid #999;
+      }
+    </style>
+    <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&signed_in=false"></script>
+    </script>
+
+    <script>
+
+    var map,
+      searchArea,
+      searchAreaMarker,
+      searchAreaRadius = 1000, // metres
+      startLat = 40.782827,
+      startLng = -73.966167;
+      var circle;
+      var geocoder = new google.maps.Geocoder;
+      var img   = '/home/ncs/Work/maps/Icons/airdrop.png';
+      var img1  = '/home/ncs/Work/maps/Icons/hcircle.png';
+      var file  = "/home/ncs/Work/maps/file.csv";
+      var file1 = "/home/ncs/Work/maps/random.csv";
+
+
+function init() {
+      var startLatLng = new google.maps.LatLng(startLat, startLng);
+
+      map = new google.maps.Map(document.getElementById('map-canvas'), {
+        center: startLatLng,
+        zoom: 12
+      });
+
+      searchArea = new google.maps.Circle({
+        strokeColor: '#FF0000',
+        strokeOpacity: 0.5,
+        strokeWeight: 2,
+        fillColor: '#FF0000',
+        fillOpacity: 0.2,
+        map: map,
+        center: startLatLng,
+        radius: searchAreaRadius
+      });
+
+      searchAreaMarker = new google.maps.Marker({
+        position: startLatLng,
+        map: map,
+        draggable: true,
+        title: "searchAreaMarker"
+      });
+        attachMarkerinfo(searchAreaMarker, searchAreaMarker.title);
+
+      google.maps.event.addListener(searchAreaMarker, 'dragend', function(e) {
+        startLatLng = e.latLng;
+
+        searchArea.setOptions({
+          center: startLatLng
+        });
+
+      });
+      ReadFromDoc();
+<!--      ReadFromDoc(file1,img1);-->
+    }
+
+function drawCircle(marker) {
+        circle = new google.maps.Circle({
+            strokeColor: '#FF0000',
+            strokeOpacity: 0.5,
+            strokeWeight: 2,
+            fillColor: '#FF0000',
+            fillOpacity: 0.2,
+            map: map,
+            center: marker.getPosition(),
+            radius: searchAreaRadius
+        });
+      }
+
+function attachMarkerinfo(marker,text) {
+        var info = new google.maps.InfoWindow();
+        google.maps.event.addListener(marker, 'click', function() {
+            info.setContent(marker.title);
+            info.open(map,marker);
+        });
+    }
+
+function getStatus(marker) {
+        var info = new google.maps.InfoWindow();
+        var image = img1;
+        google.maps.event.addListener(marker, 'click', function() {
+
+            if (google.maps.geometry.spherical.computeDistanceBetween(marker.getPosition(),
+                searchArea.getCenter()) <= searchArea.getRadius()) {
+                        ReverseGeocode(marker);
+                } else {
+                      alert(marker.title + ' is NOT in searchArea. Mark as new location !!!');
+                      var newMarker = new google.maps.Marker({
+                      position: marker.getPosition(),
+                      map: map,
+                      title: "New Marker",
+                      icon: image
+                    });
+                    marker.setMap(null);
+                    info.setContent(newMarker.title);
+                    info.open(map,newMarker);
+                    ReverseGeocode(newMarker);
+              }
+          });
+      }
+
+
+function ReverseGeocode(marker){
+    var info = new google.maps.InfoWindow();
+    google.maps.event.addListener(marker, 'click', function() {
+       geocoder.geocode({'location' : marker.getPosition()}, function(results, status) {
+             if (status === google.maps.GeocoderStatus.OK) {
+                  if (results[1]) {
+                      info.setContent(results[1].formatted_address);
+                      info.open(map, marker);
+                 } else {
+                     alert('No results found');
+                        }
+                 } else {
+                     alert('Geocoder failed due to: ' + status);
+             }
+          });
+       });
+    }
+
+
+function ReadFromDoc() {
+    var rawFile = new XMLHttpRequest();
+<!--    var searchArea;-->
+    var one;
+    var image = img;
+    rawFile.open("GET", file, true);
+
+    var randomMarkers = [{
+      title: 'Marker 1',
+      latLng: new google.maps.LatLng(40.770088, -73.971146)
+    }, {
+      title: 'Marker 2',
+      latLng: new google.maps.LatLng(40.782048, -73.972691)
+    }, {
+      title: 'Marker 3',
+      latLng: new google.maps.LatLng(40.769048, -73.987797)
+    }, {
+      title: 'Marker 4',
+      latLng: new google.maps.LatLng(40.773858, -73.956211)
+    }, {
+      title: 'Marker 5',
+      latLng: new google.maps.LatLng(40.800372, -73.952091)
+    }, {
+      title: 'Marker 6',
+      latLng: new google.maps.LatLng(40.804661, -73.939388)
+    }];
+        for (var i = 0; i < randomMarkers.length; i++) {
+            randomMarkers[i].marker = new google.maps.Marker({
+              position: randomMarkers[i].latLng,
+              map: map,
+              title: randomMarkers[i].title
+            });
+            attachMarkerinfo(randomMarkers[i].marker, randomMarkers[i].title);
+            getStatus(randomMarkers[i].marker);
+     }
+
+    rawFile.onreadystatechange = function ()
+    {
+        if(rawFile.readyState === 4)
+        {
+            if(rawFile.status === 200 || rawFile.status == 0)
+            {
+                var allText = rawFile.responseText;
+                var line = allText.split(';');
+                    for(var i=0; i< line.length - 1; i++){
+                        if(line[i] == 'NULL'){
+                            break;
+                        }
+                        else{
+                            one = line[i].split(",");
+                            var demoPos = new google.maps.LatLng(one[0], one[1]);
+                            var demoMarker = new google.maps.Marker({
+                            position: demoPos,
+                            map: map,
+                            title: "Make it work",
+                            icon: image
+                          });
+                          attachMarkerinfo(demoMarker, demoMarker.title);                       
+<!--                          drawCircle(demoMarker);-->
+                          getStatus(demoMarker);
+                    }
+                }
+            }
+        }
+    }
+    rawFile.send(null);
+    rawFile.close();
+}
+
+    google.maps.event.addDomListener(window, 'load', init);
+
+    </script>
+  </head>
+  <body>
+    <div id="map-canvas" style="float:left;width:100%;height:100%;"></div>
+    <div style="margin:20px;border-width:2px;">
+
+    </div>
+  </body>
+</html>
